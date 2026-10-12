@@ -1,0 +1,70 @@
+# Development: code is bind-mounted, so edits show up instantly.
+#   docker compose up -d --build
+#   docker compose exec app php artisan migrate
+services:
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    ports:
+      - "127.0.0.1:8082:80"
+    environment:
+      PMA_HOST: db
+    depends_on:
+      - db
+    networks: [mire]
+  app:
+    build:
+      context: .
+      target: dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    volumes:
+      - ./:/var/www/html
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-mire}
+      DB_USERNAME: ${DB_USERNAME:-mire}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [mire]
+
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [app]
+    networks: [mire]
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-mire}
+      MYSQL_USER: ${DB_USERNAME:-mire}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    ports:
+      - "127.0.0.1:${DB_FORWARD_PORT:-3307}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_ROOT_PASSWORD:-rootsecret}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [mire]
+
+volumes:
+  db-data:
+
+networks:
+  mire:

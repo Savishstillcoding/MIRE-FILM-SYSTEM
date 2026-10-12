@@ -1,0 +1,427 @@
+// Miré Film theme: Bootstrap 5.3 (dark color mode) tuned to the purple → maroon brand.
+//
+// The whole site's styling. Loaded on every page by resources/views/layouts/app.blade.php (@vite);
+// compiled to public/build/ by `npm run build` (config: vite.config.js). Bootstrap classes (btn, row, modal…)
+// come from the import below; the custom classes (mire-*, poster-*, genre-box…) are defined here.
+//
+// Sections:  Brand tokens · Bootstrap overrides · Base (background, headings) · Navbar + logo (partials/header)
+//            Section headings (components/section-heading) · Posters (components/poster) · Sign-in warning
+//            (partials/signin-modal) · Lists (lists.blade.php) · Landing (welcome) · Cards · Film page (film-show)
+//            Reviews (partials/review-card) · Profile
+
+// ---------- Brand tokens ----------
+$mire-plum-900: #1f0030;
+$mire-plum-700: #3a1062;
+$mire-wine-900: #3d0008;
+$mire-ink: #0f0618;
+$mire-blue: #0b6fc2;                                                                                // ← buttons + links (becomes Bootstrap's $primary)
+$mire-gold: #f5c542;                                                                                // ← stars, watchlist "on"
+$mire-muted: #b3a6c2;
+
+// ---------- Bootstrap overrides ----------
+$primary: $mire-blue;
+$warning: $mire-gold;
+$danger: #e5484d;
+
+// Type: Manrope for text, Bebas Neue (one weight, all caps) for headings, Michroma for the logo.
+$font-family-sans-serif: Manrope, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+$mire-display: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+$headings-font-family: $mire-display;
+$headings-font-weight: 400;
+$border-radius: .5rem;
+$border-radius-lg: .75rem;
+$border-radius-sm: .375rem;
+$link-decoration: none;
+$enable-shadows: false;
+$modal-backdrop-opacity: .65;
+
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+
+$body-color-dark: #fff;
+$body-secondary-color-dark: rgba($mire-muted, .9);
+$body-tertiary-bg-dark: rgba(255, 255, 255, .06);
+$border-color-dark: rgba(255, 255, 255, .14);
+$link-color-dark: #5aaeff;
+$link-hover-color-dark: #8ec7ff;
+$form-control-bg-dark: rgba(255, 255, 255, .08);
+
+@import 'bootstrap/scss/bootstrap';                                                                 // ← all of Bootstrap, using the overrides above
+
+// ---------- Base ----------
+[data-bs-theme='dark'] {
+    --bs-body-bg: #{$mire-wine-900};
+    --mire-surface: rgba(255, 255, 255, .06);
+    --mire-surface-strong: rgba(15, 6, 24, .72);
+    --mire-muted: #{$mire-muted};
+}
+
+body {
+    min-height: 100vh;
+    background: linear-gradient(180deg, $mire-plum-900 0%, #2a0845 22%, $mire-plum-700 50%, #3f0a3a 75%, $mire-wine-900 100%) no-repeat $mire-wine-900;  // ← purple → maroon page background
+    background-attachment: fixed;
+}
+
+// Inputs default to --bs-body-bg (wine); keep them a neutral glass instead.
+.form-control, .form-select { background-color: rgba(255, 255, 255, .08); }
+.form-control:focus { background-color: rgba(255, 255, 255, .12); }
+.modal-content .form-control { background-color: rgba(0, 0, 0, .25); }
+
+:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.text-mire-muted { color: var(--mire-muted) !important; }
+.font-display { font-family: Michroma, $font-family-sans-serif; }
+
+// Bebas Neue has a single weight and no italic: neutralise weight/italic utilities on headings
+// so the browser doesn't fake bold/slanted versions.
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
+.display-1, .display-2, .display-3, .display-4, .display-5, .display-6 {
+    font-family: $mire-display;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    letter-spacing: .03em;
+    line-height: 1.05;
+}
+
+// ---------- Navbar ----------
+.mire-navbar {                                                                                      // ← partials/header.blade.php
+    background: rgba($mire-ink, .78);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--bs-border-color);
+
+    .nav-link { font-family: $mire-display; letter-spacing: .08em; font-size: 1.3rem; padding-top: .3rem; padding-bottom: .3rem; }
+    .nav-link.active { color: #fff; box-shadow: inset 0 -2px 0 $primary; }
+}
+
+.mire-logo {                                                                                        // ← camera + MIRÉ / FILM (partials/header)
+    // Camera on the left; MIRÉ / FILM stacked beside it. The camera's crank hangs down to the FILM line,
+    // so bottom-aligning puts MIRÉ level with the bottom of the camera body.
+    display: inline-flex;
+    align-items: flex-end;
+    gap: .15rem;
+    line-height: 1;
+    color: #fff;
+
+    .logo-mark { width: auto; height: 3.25rem; flex: none; }
+    .wordmark { display: flex; flex-direction: column; align-items: stretch; margin-bottom: -.4rem; } // MIRÉ level with the camera body
+    .word {
+        font-family: Michroma, sans-serif;
+        font-size: 1.7rem;
+        letter-spacing: .02em;
+        -webkit-text-stroke: .06em currentColor; // Michroma has one weight; this gives the bolder look
+    }
+    .film {
+        display: flex;
+        justify-content: space-between; // spread F I L M across the width of MIRÉ
+        font-family: Michroma, sans-serif;
+        font-size: .72rem;
+        margin-top: .3rem;
+        padding: 0 .1rem;
+    }
+
+    @include media-breakpoint-down(sm) {
+        .logo-mark { height: 2.75rem; }
+        .word { font-size: 1.4rem; }
+        .film { font-size: .6rem; }
+    }
+}
+
+.mire-search {
+    min-width: 0;
+
+    .form-control { border-radius: 999px; padding-right: 2.75rem; }
+    .btn { position: absolute; right: .25rem; top: 50%; transform: translateY(-50%); border: 0; color: var(--bs-secondary-color); }
+}
+
+.mire-avatar { border-radius: 50%; flex: none; }
+
+// ---------- Section headings ----------
+.mire-section { margin-top: 3.5rem; }
+
+.mire-heading {                                                                                     // ← components/section-heading.blade.php
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, .55);
+    padding-bottom: .4rem;
+    margin-bottom: 1.5rem;
+
+    h2 { margin: 0; }
+    &.light h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); letter-spacing: .04em; }
+    &.caps h2 { font-size: clamp(1.4rem, 2.4vw, 1.75rem); letter-spacing: .08em; text-transform: uppercase; }
+    .action { color: var(--mire-muted); font-weight: 300; white-space: nowrap; }
+    .action a { color: inherit; }
+    .action a:hover { color: #fff; }
+}
+
+// ---------- Posters ----------
+.mire-poster {                                                                                      // ← components/poster.blade.php
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    aspect-ratio: 2 / 3;
+    width: 100%;
+    overflow: hidden;
+    padding: .6rem .5rem;
+    border-radius: $border-radius;
+    text-align: center;
+    color: #fff;
+    background: var(--poster-bg);
+    box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .45);
+    transition: transform .2s ease, box-shadow .2s ease;
+
+    &:hover, &:focus-visible { transform: translateY(-6px); box-shadow: 0 1rem 2rem rgba(0, 0, 0, .55); color: #fff; }
+
+    .title { font-family: $mire-display; font-size: clamp(1rem, 1.9vw, 1.45rem); line-height: 1; text-transform: uppercase; letter-spacing: .04em; }
+    .subtitle { font-size: .65rem; opacity: .85; }
+    // color: transparent hides alt text; images fade in once loaded (the component adds .is-loaded).
+    img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; color: transparent; opacity: 0; transition: opacity .35s ease; }
+    &.is-loaded img { opacity: 1; }                                                                 // ← fade-in (class added by the img onload)
+
+    // Has an image: show a neutral shimmering skeleton (no gradient/title) until it arrives.
+    &.has-image:not(.is-failed) {
+        background: linear-gradient(100deg, #1c1226 30%, #2a1d38 50%, #1c1226 70%) 0 0 / 300% 100%;
+        animation: poster-shimmer 1.4s ease-in-out infinite;                                        // ← loading shimmer until the image arrives
+
+        .title, .subtitle { visibility: hidden; }
+    }
+    &.has-image.is-loaded { animation: none; }
+
+    &.static:hover { transform: none; }
+}
+
+@keyframes poster-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+// Row of posters that scrolls sideways on small screens and becomes a grid on wide ones.
+.poster-rail {                                                                                      // ← rows of posters (sideways scroll on phones)
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(7.5rem, 10.5rem);
+    gap: 1rem;
+    overflow-x: auto;
+    padding: .5rem .25rem 1rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .25) transparent;
+
+    > * { scroll-snap-align: start; }
+
+    @include media-breakpoint-up(md) { gap: 1.5rem; }
+
+    // .fill: posters share the full row width (edge to edge with the heading line) instead of capping at 10.5rem.
+    &.fill { grid-auto-columns: minmax(7.5rem, 1fr); }                                              // ← home: 6 posters fill the whole line
+}
+
+.poster-placeholder {
+    aspect-ratio: 2 / 3;
+    border: 1px dashed rgba(255, 255, 255, .25);
+    border-radius: $border-radius;
+}
+
+// ---------- Sign-in warning ----------
+// Faded Sign in button while fields are empty (still clickable so it can explain why).
+.btn.is-incomplete { opacity: .5; cursor: not-allowed; }
+
+.signin-dialog { position: relative; }
+
+.signin-warning {                                                                                   // ← the red cards beside the sign-in box
+    display: flex;
+    gap: .75rem;
+    align-items: flex-start;
+    padding: .9rem 1rem;
+    border: 1px solid rgba($danger, .55);
+    border-radius: $border-radius-lg;
+    background: #3a0f1a;
+    color: #ffc2c8;
+    box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, .5);
+    font-size: .95rem;
+
+    &[hidden] { display: none; }
+    strong { color: #fff; }
+    svg { flex: none; color: $danger; margin-top: .1rem; }
+
+    // Blue "Sign in required" variant (signin-modal #signin-required)
+    &.info { border-color: rgba($primary, .6); background: #0d2140; color: #cfe4ff; }
+    &.info svg { color: #5aaeff; }
+    &.info::before { border-right-color: rgba($primary, .6) !important; }
+
+    // Wide screens: floats to the right of the sign-in box, with a small arrow pointing at it.
+    @include media-breakpoint-up(lg) {
+        position: absolute;
+        left: calc(100% + 1rem);
+        top: 50%;
+        transform: translateY(-50%);
+        width: 17rem;
+
+        &::before {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            margin-top: -.5rem;
+            border: .5rem solid transparent;
+            border-right-color: rgba($danger, .55);
+        }
+    }
+
+    // Phones/tablets: no room beside it, so it sits just above the box.
+    @include media-breakpoint-down(lg) { margin-bottom: .75rem; }
+}
+
+@include media-breakpoint-down(lg) {
+    .signin-dialog.modal-dialog-centered { flex-direction: column; justify-content: center; align-items: stretch; }
+}
+
+// ---------- Lists (genre boxes) ----------
+// Jump chips: one swipeable row on phones, wrapping on wider screens.
+.chip-rail {                                                                                        // ← lists.blade.php genre buttons
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    padding-bottom: .5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .25) transparent;
+
+    .btn { flex: none; }
+    @include media-breakpoint-up(md) { flex-wrap: wrap; overflow: visible; }
+}
+
+.genre-box {                                                                                        // ← lists.blade.php box per genre
+    background: var(--mire-surface);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $border-radius-lg;
+    padding: 1.25rem 1.25rem 1.5rem;
+
+    .mire-heading { margin-bottom: 1rem; }
+}
+
+// "See more / See less" sits under the box; the label follows the collapse's aria-expanded.
+.see-toggle {                                                                                       // ← "See more / See less" under each box
+    display: flex;
+    justify-content: center;
+    margin-top: .75rem;
+
+    .btn { border-radius: 999px; padding: .35rem 1.25rem; }
+    .less, .btn[aria-expanded='true'] .more { display: none; }
+    .btn[aria-expanded='true'] .less { display: inline; }
+}
+
+// ---------- Landing ----------
+.mire-hero {
+    padding: clamp(3rem, 10vw, 7rem) 0 0;
+    text-align: center;
+
+    .quote { max-width: 55rem; margin: 0 auto; font-weight: 300; font-size: clamp(1.6rem, 3.4vw, 2.6rem); line-height: 1.3; }
+    .sub { color: var(--mire-muted); font-weight: 600; }
+    .sub .brand { font-family: Michroma, sans-serif; font-style: normal; font-size: .8em; }
+    .sub svg { height: 1.4rem; fill: var(--mire-muted); }
+}
+
+.landing-posters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 9rem));
+    justify-content: center;
+
+    @include media-breakpoint-up(sm) { grid-template-columns: repeat(3, minmax(0, 10rem)); }
+    @include media-breakpoint-up(lg) { grid-template-columns: repeat(5, minmax(0, 11rem)); }
+
+    gap: clamp(1rem, 3vw, 2rem);
+    margin-top: 4rem;
+}
+
+// ---------- Cards / surfaces ----------
+.mire-card {
+    background: var(--mire-surface);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $border-radius-lg;
+}
+
+.mire-banner {                                                                                      // ← home "Featured" banner
+    display: flex;
+    align-items: flex-end;
+    min-height: 9rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: $border-radius-lg;
+    background: linear-gradient(120deg, #0d1b14, #24402f 50%, #6b7d6a);
+    color: #fff;
+    font-family: $mire-display;
+    font-size: 2rem;
+    letter-spacing: .04em;
+    line-height: 1;
+    transition: filter .2s;
+
+    &:hover { color: #fff; filter: brightness(1.15); }
+}
+
+// ---------- Film page ----------
+.film-backdrop {                                                                                    // ← film-show.blade.php faded background
+    position: absolute;
+    inset: 0 0 auto;
+    height: min(70vh, 40rem);
+    background: center top / cover no-repeat;
+    opacity: .28;
+    mask-image: linear-gradient(180deg, #000 30%, transparent);
+    pointer-events: none;
+}
+
+.film-actions {
+    .action-btn {
+        display: flex; flex-direction: column; align-items: center; gap: .25rem;
+        padding: .9rem .5rem; width: 100%;
+        background: none; border: 0; color: var(--mire-muted);
+        &:hover:not(:disabled) { color: #fff; }
+        &.on { color: $mire-gold; }
+        &.like.on { color: $danger; }
+        &:disabled { opacity: .6; }
+        svg { width: 1.75rem; height: 1.75rem; }
+    }
+    .list-group-item { background: transparent; }
+}
+
+.star-rating {                                                                                      // ← film-show.blade.php stars
+    display: inline-flex;
+    flex-direction: row-reverse; // lets :hover ~ highlight the stars to the left
+
+    button { background: none; border: 0; padding: 0 .1rem; font-size: 2rem; line-height: 1; color: rgba(255, 255, 255, .35); transition: color .15s, transform .15s; }
+    button.on { color: $mire-gold; }
+    &:hover button { color: rgba(255, 255, 255, .35); }
+    button:hover, button:hover ~ button { color: $mire-gold; transform: scale(1.08); }
+}
+
+.stars-static { color: $mire-gold; letter-spacing: .1em; }
+
+// ---------- Reviews ----------
+.review-body { font-size: 1.05rem; font-weight: 300; white-space: pre-line; overflow-wrap: anywhere; }
+
+.review-like {                                                                                      // ← partials/review-card.blade.php ❤️ pill
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .25rem .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: none;
+    color: var(--mire-muted);
+    font-weight: 600;
+
+    &:hover:not(:disabled) { color: #fff; }
+    &.on { color: $danger; border-color: rgba($danger, .5); }
+    &:disabled { opacity: .6; }
+}
+
+// ---------- Profile ----------
+.profile-stats {
+    .stat + .stat { border-left: 1px solid var(--bs-border-color); }
+    .value { font-family: $mire-display; font-size: clamp(2.25rem, 5vw, 3.25rem); line-height: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+    .mire-poster { animation: none !important; }
+}

@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // 'no-history': members-only pages aren't cached by the browser (app/Http/Middleware/PreventBackHistory.php)
+        $middleware->alias(['no-history' => \App\Http\Middleware\PreventBackHistory::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

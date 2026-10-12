@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    // The Movie Database API token (.env → TMDB_TOKEN). Read by app/Support/FilmCatalog.php.
+    'tmdb' => [
+        'token' => env('TMDB_TOKEN'),
+    ],
+
 ];
