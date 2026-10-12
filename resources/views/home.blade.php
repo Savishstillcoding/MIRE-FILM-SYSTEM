@@ -1,6 +1,6 @@
 {{--
     Member home (route /, PageController::home → homeRows()). Random picks on every visit:
-    $recent + $featured (trending), $favorites (acclaimed), $rewatch (classics). Uses <x-poster>.
+    $recent + $featured (2 trending), $favorites (acclaimed), $rewatch (classics). Uses <x-poster>.
 --}}
 @extends('layouts.app')
 @section('title', 'Home · Miré Film')
@@ -20,11 +20,15 @@
     @endforeach
 </div>
 
-@if ($featured)                                                                                     {{-- ← "Featured" banner with the film's backdrop --}}
-    <a href="{{ route('films.show', $featured['slug']) }}" class="mire-banner mt-3 mx-auto"
-       style="max-width: 56rem; background: linear-gradient(90deg, rgba(0,0,0,.75), rgba(0,0,0,.1)), url('{{ $featured['backdrop'] }}') center / cover;">
-        <span><small class="d-block text-uppercase fs-6 fw-semibold opacity-75">Featured</small>{{ $featured['title'] }}</span>
-    </a>
+@if ($featured)                                                                                     {{-- ← 2 "Featured" banners side by side (stacked on phones) --}}
+    <div class="featured-pair mt-3 mx-auto" style="max-width: 56rem">                               {{-- ← grid in app.scss .featured-pair --}}
+        @foreach ($featured as $film)                                                               {{-- ← 2 random trending films with a backdrop (PageController::homeRows) --}}
+            <a href="{{ route('films.show', $film['slug']) }}" class="mire-banner"                  {{-- ← whole banner opens the film page --}}
+               style="background: linear-gradient(90deg, rgba(0,0,0,.75), rgba(0,0,0,.1)), url('{{ $film['backdrop'] }}') center / cover;">
+                <span><small class="d-block text-uppercase fs-6 fw-semibold opacity-75">Featured</small>{{ $film['title'] }}</span>
+            </a>
+        @endforeach
+    </div>
 @endif
 
 @if ($favorites)

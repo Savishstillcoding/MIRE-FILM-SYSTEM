@@ -5,6 +5,12 @@
 @extends('layouts.app')
 
 @section('content')
+    <div class="landing-backdrop" aria-hidden="true">                                               {{-- ← faded audience photos behind the page, crossfading (app.scss) --}}
+        @foreach (range(1, 4) as $i)                                                                {{-- ← public/images/landing/crowd-1…4.webp --}}
+            <img src="{{ asset("images/landing/crowd-$i.webp") }}" alt="" @if ($i > 1) loading="lazy" @endif> {{-- ← first photo loads right away, the rest lazily --}}
+        @endforeach
+    </div>
+
     <section class="mire-hero">
         <p class="quote">“Discover new movies, rate your favorites, and see what your friends are watching.”</p>
 
@@ -19,7 +25,7 @@
     </section>
 
     <section class="landing-posters" aria-label="Featured films">
-        @foreach ($films as $film)                                                                  {{-- ← 5 trending films (PageController::home) --}}
+        @foreach ($films as $film)                                                                  {{-- ← 6 trending films (PageController::home) --}}
             <x-poster :film="$film" href="#join" data-bs-toggle="modal" data-bs-target="#join" />   {{-- ← guests: clicking a poster asks them to join --}}
         @endforeach
     </section>

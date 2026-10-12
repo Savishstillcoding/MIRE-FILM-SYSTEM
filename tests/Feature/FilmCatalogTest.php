@@ -76,8 +76,8 @@ class FilmCatalogTest extends TestCase
 
         foreach ($pages as $html) {
             preg_match_all('#href="[^"]*/films/(movie-\d+)[^"]*"#', $html, $m);
-            $this->assertCount(18, $m[1]);                          // 5 + featured + 6 + 6
-            $this->assertCount(18, array_unique($m[1]));            // no film twice
+            $this->assertCount(19, $m[1]);                          // 5 + 2 featured + 6 + 6
+            $this->assertCount(19, array_unique($m[1]));            // no film twice
             $this->assertSame(6, substr_count($html, 'title="Top '));
             $this->assertSame(6, substr_count($html, 'title="Classic '));
         }

@@ -329,17 +329,48 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
     justify-content: center;
 
     @include media-breakpoint-up(sm) { grid-template-columns: repeat(3, minmax(0, 10rem)); }
-    @include media-breakpoint-up(lg) { grid-template-columns: repeat(5, minmax(0, 11rem)); }
+    @include media-breakpoint-up(lg) { grid-template-columns: repeat(6, minmax(0, 11rem)); }
 
     gap: clamp(1rem, 3vw, 2rem);
     margin-top: 4rem;
 }
 
-// ---------- Cards / surfaces ----------
-.mire-card {
-    background: var(--mire-surface);
-    border: 1px solid var(--bs-border-color);
-    border-radius: $border-radius-lg;
+.landing-backdrop {                                                                                 // ← welcome.blade.php: faded audience photos behind everything
+    position: fixed;
+    inset: 0;
+    z-index: -1;                                                                                    // ← behind the page content
+    pointer-events: none;                                                                           // ← clicks pass through to the page
+    opacity: .16;                                                                                   // ← how see-through the photos are
+    mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);                       // ← fades out toward the posters
+
+    img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;                                                                          // ← fill the window without stretching
+        opacity: 0;                                                                                 // ← hidden until its turn in the crossfade
+        animation: landing-crossfade 28s infinite;                                                  // ← 4 photos × 7s each
+    }
+    img:nth-child(2) { animation-delay: 7s; }                                                       // ← each photo starts 7s after the previous one
+    img:nth-child(3) { animation-delay: 14s; }
+    img:nth-child(4) { animation-delay: 21s; }
+}
+
+@keyframes landing-crossfade {
+    0%   { opacity: 0; }
+    4%   { opacity: 1; }
+    25%  { opacity: 1; }
+    29%  { opacity: 0; }
+    100% { opacity: 0; }
+}
+
+.featured-pair {                                                                                    // ← home: the 2 featured banners
+    display: grid;
+    gap: 1rem;
+
+    @include media-breakpoint-up(md) { grid-template-columns: 1fr 1fr; }                            // ← tablets and up: side by side (phones: stacked)
+    > :only-child { grid-column: 1 / -1; }                                                          // ← only 1 film with a backdrop: full width
 }
 
 .mire-banner {                                                                                      // ← home "Featured" banner
@@ -424,4 +455,6 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; scroll-behavior: auto !important; }
     .mire-poster { animation: none !important; }
+    .landing-backdrop img { animation: none; }                                                      // ← landing photos stop crossfading
+    .landing-backdrop img:first-child { opacity: 1; }                                               // ← no crossfade: just show the first photo
 }

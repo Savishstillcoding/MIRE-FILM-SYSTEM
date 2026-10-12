@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Review;
 use App\Support\FilmCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Builds the main pages: gathers the data each page needs and hands it to its Blade view.
@@ -19,8 +20,8 @@ class PageController extends Controller
     /** Guests see the landing page (welcome.blade.php), members see their home (home.blade.php). */
     public function home()
     {
-        if (! auth()->check()) {                                                                    // ← not signed in?
-            return view('welcome', ['films' => FilmCatalog::trending(5)]);                          // ← landing page: 5 trending posters (FilmCatalog → TMDB)
+        if (! Auth::check()) {                                                                      // ← not signed in?
+            return view('welcome', ['films' => FilmCatalog::trending(6)]);                          // ← landing page: 6 trending posters (FilmCatalog → TMDB)
         }
 
         return view('home', $this->homeRows());                                                     // ← member home: random rows from homeRows() below
@@ -35,17 +36,17 @@ class PageController extends Controller
         $pools = FilmCatalog::homePools();                                                          // ← 3 TMDB lists: trending / acclaimed / classics (cached 12h)
 
         $trending = collect($pools['trending'])->shuffle();                                         // ← shuffle = different picks every refresh
-        $featured = $trending->first(fn ($f) => ! empty($f['backdrop']));                           // ← "Featured" banner needs a backdrop image
-        $recent = $trending->reject(fn ($f) => $f === $featured)->take($perRow);                    // ← top row (5), without the featured film
+        $featured = $trending->filter(fn ($f) => ! empty($f['backdrop']))->take(2)->values();       // ← 2 "Featured" banners, each needs a backdrop image
+        $recent = $trending->whereNotIn('slug', $featured->pluck('slug'))->take($perRow);           // ← top row (5), without the featured films
 
-        $used = $recent->pluck('slug')->push($featured['slug'] ?? null);                            // ← remember what's shown so nothing repeats
+        $used = $recent->pluck('slug')->merge($featured->pluck('slug'));                            // ← remember what's shown so nothing repeats
         $favorites = collect($pools['acclaimed'])->whereNotIn('slug', $used)->shuffle()->take($perShelf);  // ← "Favorite of all time" row (6)
 
         $used = $used->merge($favorites->pluck('slug'));
         $rewatch = collect($pools['classics'])->whereNotIn('slug', $used)->shuffle()->take($perShelf);  // ← "Worth rewatching" row (6)
 
         return [
-            'featured' => $featured,
+            'featured' => $featured->all(),                                                         // ← the 2 featured films (plain array for the view)
             'recent' => $recent->values()->all(),
             'favorites' => $favorites->values()->all(),
             'rewatch' => $rewatch->values()->all(),
