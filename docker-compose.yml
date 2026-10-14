@@ -25,9 +25,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-mire}
-      DB_USERNAME: ${DB_USERNAME:-mire}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_DATABASE: ${DOCKER_DB_DATABASE:-mire}
+      DB_USERNAME: ${DOCKER_DB_USERNAME:-mire}
+      DB_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
     depends_on:
       db:
@@ -47,9 +47,9 @@ services:
   db:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-mire}
-      MYSQL_USER: ${DB_USERNAME:-mire}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_DATABASE: ${DOCKER_DB_DATABASE:-mire}
+      MYSQL_USER: ${DOCKER_DB_USERNAME:-mire}
+      MYSQL_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
     ports:
       - "127.0.0.1:${DB_FORWARD_PORT:-3307}:3306"
