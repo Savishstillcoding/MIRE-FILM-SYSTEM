@@ -11,6 +11,10 @@
  *                                                   → FilmActionController, ReviewController::like
  *   data-share           film-show                 copy link / phone share sheet
  *   data-live            profile, profile-collection  refresh when coming back with the Back button
+ *   data-confirm         admin/movies, admin/users   "Are you sure?" before deleting / changing admin access
+ *   data-poster          admin/movies/form       poster preview + Replace / Remove before saving
+ *   data-trailer         trailers, film-show, home   NEW: play a YouTube trailer in the pop-up (partials/trailer-modal)
+ *   data-password-rules  partials/join-modal     NEW: password checklist turns green as you type
  */
 import * as bootstrap from 'bootstrap';
 
@@ -102,6 +106,22 @@ document.querySelectorAll('form[data-require-all]').forEach(form => {
         button.textContent = label;
         refresh();
     });
+});
+
+// NEW: Create account: tick off each password rule as it's met (same rules as the server: AppServiceProvider).
+const passwordRules = {
+    length: v => [...v].length >= 8,
+    case: v => /\p{Lu}/u.test(v) && /\p{Ll}/u.test(v),                                              // ← upper + lower (any language)
+    number: v => /\p{N}/u.test(v),
+    symbol: v => /[\p{P}\p{S}\p{Z}]/u.test(v),                                                      // ← punctuation, symbols or a space
+};
+document.querySelectorAll('[data-password-rules]').forEach(list => {
+    const input = document.getElementById(list.dataset.passwordRules);
+    const check = () => list.querySelectorAll('[data-rule]').forEach(li =>
+        li.classList.toggle('met', passwordRules[li.dataset.rule](input.value))                     // ← .met = green ✓ (app.scss .password-rules)
+    );
+    input.addEventListener('input', check);
+    check();
 });
 
 // Settings: pencil button unlocks the username field.
@@ -200,6 +220,62 @@ document.querySelectorAll('[data-share]').forEach(btn =>
         }
     })
 );
+
+// Admin: ask before destructive actions (Delete movie, Make / Remove admin).
+document.querySelectorAll('form[data-confirm]').forEach(form =>
+    form.addEventListener('submit', e => {
+        if (!confirm(form.dataset.confirm)) e.preventDefault();                                     // ← Cancel = nothing is sent
+    })
+);
+
+// Admin movie form: show the chosen poster right away; Replace re-opens the file picker, Remove clears it.
+document.querySelectorAll('[data-poster]').forEach(box => {
+    const input = box.querySelector('[data-poster-input]');
+    const preview = box.querySelector('[data-poster-preview]');
+    const drop = preview.closest('label');
+    const actions = box.querySelector('[data-poster-actions]');
+    const removeFlag = box.querySelector('[data-poster-remove-flag]');                             // ← tells MovieController to delete the saved poster
+
+    const show = src => {
+        preview.hidden = !src;
+        if (src) preview.src = src;
+        else preview.removeAttribute('src');
+        drop.classList.toggle('has-image', Boolean(src));
+        actions.hidden = !src;
+    };
+
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        if (!file) return;
+        removeFlag.value = '0';
+        show(URL.createObjectURL(file));                                                            // ← local preview, nothing uploaded yet
+    });
+    box.querySelector('[data-poster-remove]').addEventListener('click', () => {
+        input.value = '';
+        removeFlag.value = '1';
+        show(null);
+    });
+});
+
+// NEW: Trailers. Any link with data-trailer="YOUTUBE_KEY" plays in the pop-up instead of opening YouTube.
+const trailerModal = document.getElementById('trailer-modal');                                     // ← partials/trailer-modal.blade.php (members only)
+if (trailerModal) {
+    const frame = trailerModal.querySelector('[data-trailer-frame]');
+    const heading = trailerModal.querySelector('[data-trailer-heading]');
+    const filmLink = trailerModal.querySelector('[data-trailer-film]');
+
+    document.addEventListener('click', e => {
+        const link = e.target.closest('[data-trailer]');
+        if (!link) return;
+        e.preventDefault();                                                                         // ← don't leave the site
+        heading.textContent = link.dataset.trailerTitle || 'Trailer';
+        frame.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(link.dataset.trailer)}?autoplay=1&rel=0`;  // ← rel=0: suggestions only from the same channel
+        filmLink.hidden = !link.dataset.filmUrl;                                                    // ← "View film page →" (not shown on the film page itself)
+        if (link.dataset.filmUrl) filmLink.href = link.dataset.filmUrl;
+        bootstrap.Modal.getOrCreateInstance(trailerModal).show();
+    });
+    trailerModal.addEventListener('hidden.bs.modal', () => frame.removeAttribute('src'));          // ← closing the pop-up stops the video
+}
 
 // Pages marked data-live re-fetch when restored from the back/forward cache: the profile (so likes and
 // watchlist changes always show) and EVERY members-only page (layouts/app puts data-live on <body> when signed in),

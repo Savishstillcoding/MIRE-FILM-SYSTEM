@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Auth;
 /**
  * Builds the main pages: gathers the data each page needs and hands it to its Blade view.
  *
- * Routes:     routes/web.php ( /, /films, /films/{slug}, /lists, /profile, /profile/{type} )
+ * Routes:     routes/web.php ( /, /films, /films/{slug}, /trailers, /lists, /profile, /profile/{type} )
  * Film data:  app/Support/FilmCatalog.php (TMDB API, cached)
  * User data:  app/Models/User.php → likes(), watchlist(), ratings(), reviews()  (database)
- * Views:      resources/views/{welcome, home, films, film-show, lists, profile, profile-collection}.blade.php
+ * Views:      resources/views/{welcome, home, films, film-show, trailers, lists, profile, profile-collection}.blade.php
  */
 class PageController extends Controller
 {
@@ -46,6 +46,9 @@ class PageController extends Controller
         $rewatch = collect($pools['classics'])->whereNotIn('slug', $used)->shuffle()->take($perShelf);  // ← "Worth rewatching" row (6)
 
         return [
+            'trailer' => FilmCatalog::firstWithTrailer(                                             // ← NEW: "Featured trailer" banner
+                $trending->whereNotIn('slug', $used)->concat($trending->whereIn('slug', $used))->all()),  // ← prefer a film not shown below
+
             'featured' => $featured->all(),                                                         // ← the 2 featured films (plain array for the view)
             'recent' => $recent->values()->all(),
             'favorites' => $favorites->values()->all(),
@@ -99,6 +102,12 @@ class PageController extends Controller
             'reviews' => $reviews ?: ($film['reviews'] ?? []),
             'reviewsFromTmdb' => ! $reviews && ! empty($film['reviews']),
         ]);
+    }
+
+    /** NEW: Trailers page (trailers.blade.php): Coming soon / Trending / Popular rows of YouTube trailers from TMDB. */
+    public function trailers()
+    {
+        return view('trailers', ['shelves' => FilmCatalog::trailerShelves()]);
     }
 
     /** Lists page (lists.blade.php): every TMDB genre with its popular films. */

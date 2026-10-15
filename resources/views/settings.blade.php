@@ -50,7 +50,7 @@
 
     <div class="col-lg-4">
         <div class="mire-card p-4 border-danger-subtle">
-            <h2 class="h5 text-danger-emphasis">Danger zone</h2>
+            <h2 class="h5 text-danger-emphasis">Delete account</h2>
             <p class="small text-mire-muted">Deactivating hides your profile, ratings and lists.</p>
             <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deactivate-dialog">
                 Deactivate account

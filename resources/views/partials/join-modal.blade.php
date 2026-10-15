@@ -24,8 +24,15 @@
                     </div>
                     <div class="mb-1">
                         <label for="password" class="form-label">Password</label>
-                        <input id="password" name="password" type="password" @class(['form-control form-control-lg', 'is-invalid' => $errors->register->has('password')]) autocomplete="new-password" required>  {{-- ← at least 8 characters --}}
-                        @error('password', 'register') <div class="invalid-feedback">{{ $message }}</div> @else <div class="form-text">At least 8 characters.</div> @enderror
+                        <input id="password" name="password" type="password" @class(['form-control form-control-lg', 'is-invalid' => $errors->register->has('password')]) autocomplete="new-password" required aria-describedby="password-rules">  {{-- ← rules: AppServiceProvider Password::defaults() --}}
+                        @error('password', 'register') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        {{-- NEW: live checklist; each rule turns green as you type (app.js "data-password-rules"). The server checks the same rules. --}}
+                        <ul class="password-rules list-unstyled small mt-2 mb-0" id="password-rules" data-password-rules="password">
+                            <li data-rule="length">At least 8 characters</li>
+                            <li data-rule="case">An uppercase and a lowercase letter</li>
+                            <li data-rule="number">A number</li>
+                            <li data-rule="symbol">A symbol, e.g. ! @ # ?</li>
+                        </ul>
                     </div>
                 </div>
                 <div class="modal-footer border-0 flex-column align-items-stretch">

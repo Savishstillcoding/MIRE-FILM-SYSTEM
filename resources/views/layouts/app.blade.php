@@ -47,6 +47,8 @@
     @guest                                                                                          {{-- ← pop-ups only exist for people not signed in --}}
         @include('partials.join-modal')
         @include('partials.signin-modal')
+    @else
+        @include('partials.trailer-modal')                                                          {{-- ← NEW: pop-up trailer player for members --}}
     @endguest
 
     @stack('modals')                                                                                {{-- ← pages can add pop-ups here (settings uses it) --}}

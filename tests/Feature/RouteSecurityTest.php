@@ -15,7 +15,7 @@ class RouteSecurityTest extends TestCase
     use RefreshDatabase;
 
     /** Every members-only page. */
-    private const PAGES = ['/films', '/films?q=matrix', '/films/arcane', '/lists', '/profile', '/profile/likes', '/profile/watchlist', '/settings'];
+    private const PAGES = ['/films', '/films?q=matrix', '/films/arcane', '/trailers', '/lists', '/profile', '/profile/likes', '/profile/watchlist', '/settings'];  // ← NEW: /trailers
 
     public function test_signed_out_visitors_cannot_open_any_members_only_page(): void
     {

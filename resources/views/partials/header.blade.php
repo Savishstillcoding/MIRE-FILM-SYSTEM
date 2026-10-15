@@ -23,9 +23,11 @@
                 @auth
                     <li class="nav-item"><a @class(['nav-link', 'active' => request()->routeIs('films*')]) href="{{ route('films') }}" @if (request()->routeIs('films*')) aria-current="page" @endif>FILMS</a></li>
                     <li class="nav-item"><a @class(['nav-link', 'active' => request()->routeIs('lists')]) href="{{ route('lists') }}" @if (request()->routeIs('lists')) aria-current="page" @endif>LISTS</a></li>
+                    <li class="nav-item"><a @class(['nav-link', 'active' => request()->routeIs('trailers')]) href="{{ route('trailers') }}" @if (request()->routeIs('trailers')) aria-current="page" @endif>TRAILERS</a></li>  {{-- ← NEW --}}
                 @else
                     <li class="nav-item"><a class="nav-link" href="#signin" data-bs-toggle="modal" data-bs-target="#signin">FILMS</a></li>
                     <li class="nav-item"><a class="nav-link" href="#signin" data-bs-toggle="modal" data-bs-target="#signin">LISTS</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#signin" data-bs-toggle="modal" data-bs-target="#signin">TRAILERS</a></li>  {{-- ← NEW: guests get the sign-in box --}}
                 @endauth
             </ul>
 
@@ -48,6 +50,9 @@
                         <li><a class="dropdown-item" href="{{ route('home') }}">Home</a></li>
                         <li><a class="dropdown-item" href="{{ route('profile') }}">Profile</a></li>
                         <li><a class="dropdown-item" href="{{ route('settings') }}">Settings</a></li>
+                        @can('admin')                                                               {{-- ← only admins (Gate in AppServiceProvider) --}}
+                            <li><a class="dropdown-item" href="{{ route('admin.dashboard') }}">Admin dashboard</a></li>
+                        @endcan
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}">                     {{-- ← → AuthController::logout --}}

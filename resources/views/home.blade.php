@@ -1,6 +1,6 @@
 {{--
     Member home (route /, PageController::home → homeRows()). Random picks on every visit:
-    $recent + $featured (2 trending), $favorites (acclaimed), $rewatch (classics). Uses <x-poster>.
+    $trailer (NEW: featured trailer banner), $recent + $featured (2 trending), $favorites (acclaimed), $rewatch (classics). Uses <x-poster>.
 --}}
 @extends('layouts.app')
 @section('title', 'Home · Miré Film')
@@ -13,6 +13,20 @@
         Here’s what we’ve been watching.
     </h1>
 </section>
+
+@if ($trailer)                                                                                      {{-- ← NEW: "Featured trailer" banner (PageController::homeRows → FilmCatalog::firstWithTrailer) --}}
+    <section class="trailer-feature mt-4 mx-auto" style="max-width: 56rem; background-image: linear-gradient(90deg, rgba(0,0,0,.85), rgba(0,0,0,.15)), url('{{ $trailer['backdrop'] }}')">
+        <small class="text-uppercase fw-semibold opacity-75">Featured trailer</small>
+        <h2 class="display-5 mb-3">{{ $trailer['title'] }}</h2>
+        <a href="https://www.youtube.com/watch?v={{ $trailer['trailer']['key'] }}" target="_blank" rel="noopener"
+           class="btn btn-light btn-lg d-inline-flex align-items-center gap-2"
+           data-trailer="{{ $trailer['trailer']['key'] }}" data-trailer-title="{{ $trailer['title'] }} — {{ $trailer['trailer']['name'] }}"
+           data-film-url="{{ route('films.show', $trailer['slug']) }}">                             {{-- ← pop-up player; "View film page" inside it --}}
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            Play trailer
+        </a>
+    </section>
+@endif
 
 <div class="poster-rail mt-4 mx-auto" style="max-width: 56rem">                                     {{-- ← top row: 5 random trending (PageController::homeRows) --}}
     @foreach ($recent as $film)

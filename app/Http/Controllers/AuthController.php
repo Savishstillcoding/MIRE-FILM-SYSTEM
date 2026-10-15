@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * Create account, sign in and sign out. Uses the default users table: `name` is the username.
@@ -22,7 +23,7 @@ class AuthController extends Controller
         $data = $request->validateWithBag('register', [                                             // ← errors reopen the Create account pop-up
             'email'    => 'required|email|unique:users,email',
             'name'     => 'required|string|min:3|max:30|unique:users,name',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', Password::defaults()],                             // ← NEW: 8+ chars, upper + lower, number, symbol (AppServiceProvider)
         ]);
 
         $user = User::create($data); // hashed via the User model's 'hashed' cast                   // ← new row in users

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * The ONLY place that talks to TMDB (themoviedb.org): films, posters, genres, search and TMDB reviews.
+ * The ONLY place that talks to TMDB (themoviedb.org): films, posters, genres, search, TMDB reviews and trailers.
  * Results are cached so pages stay fast; several requests are fetched at once (getMany / Http::pool).
  * Without a token, or while TMDB is unreachable, the small built-in catalog at the bottom is used instead.
  *
@@ -163,6 +163,94 @@ class FilmCatalog
             ->values()->all();
     }
 
+    // ---------- Trailers (YouTube videos stored on TMDB) ----------
+
+    /**
+     * NEW: the Trailers page (trailers.blade.php): 3 rows of films that have a YouTube trailer.
+     * [['name' => 'Coming soon', 'slug' => 'coming-soon', 'films' => [film + 'trailer'], ...], ...]
+     * Lists are fetched in parallel, then every film's videos in parallel (all cached). Without TMDB: [].
+     */
+    public static function trailerShelves(int $perShelf = 10): array
+    {
+        $lists = self::getMany([
+            'coming-soon' => ['/discover/movie', [                                                  // ← not released yet, most anticipated first
+                'primary_release_date.gte' => now()->addDay()->toDateString(),
+                'sort_by' => 'popularity.desc', 'include_adult' => 'false',
+            ]],
+            'trending' => ['/trending/movie/week', []],                                             // ← popular this week
+            'popular' => ['/movie/popular', ['page' => 1]],                                         // ← popular overall
+        ]);
+        $names = ['coming-soon' => 'Coming soon', 'trending' => 'Trending', 'popular' => 'Popular'];
+        $today = now()->toDateString();
+
+        $used = [];
+        $shelves = [];
+        foreach ($names as $slug => $name) {
+            $films = collect($lists[$slug]['results'] ?? [])
+                ->map(fn ($r) => self::normalize($r, 'movie'))
+                ->when($slug === 'coming-soon', fn ($c) => $c
+                    ->filter(fn ($f) => ($f['release_date'] ?? '') > $today)                        // ← only future release dates
+                    ->sortBy('release_date'))                                                       // ← soonest first
+                ->whereNotIn('slug', $used)                                                         // ← a film appears in one row only
+                ->take($perShelf)->values()->all();
+            $used = array_merge($used, array_column($films, 'slug'));
+            $shelves[] = ['name' => $name, 'slug' => $slug, 'films' => $films];
+        }
+
+        $videos = self::videosFor(array_merge(...array_column($shelves, 'films')));
+
+        return collect($shelves)
+            ->map(fn ($shelf) => ['films' => collect($shelf['films'])
+                ->map(fn ($f) => $f + ['trailer' => self::pickTrailer($videos[$f['slug']] ?? null)])
+                ->filter(fn ($f) => $f['trailer'])                                                  // ← skip films without a YouTube trailer
+                ->values()->all()] + $shelf)
+            ->filter(fn ($shelf) => $shelf['films'])
+            ->values()->all();
+    }
+
+    /** NEW: the first of $films (with a backdrop) that has a trailer, for the Home "Featured trailer" banner. Null if none. */
+    public static function firstWithTrailer(array $films, int $tries = 4): ?array
+    {
+        $candidates = collect($films)->filter(fn ($f) => isset($f['tmdb_id']) && ! empty($f['backdrop']))->take($tries)->values()->all();
+        $videos = self::videosFor($candidates);                                                     // ← up to 4 videos requests at once
+
+        foreach ($candidates as $film) {
+            if ($trailer = self::pickTrailer($videos[$film['slug']] ?? null)) {
+                return $film + ['trailer' => $trailer];
+            }
+        }
+
+        return null;
+    }
+
+    /** Videos for several films in parallel: [slug => TMDB videos payload|null]. Cached a day. */
+    private static function videosFor(array $films): array
+    {
+        return self::getMany(collect($films)
+            ->filter(fn ($f) => isset($f['tmdb_id']))
+            ->mapWithKeys(fn ($f) => [$f['slug'] => ["/{$f['type']}/{$f['tmdb_id']}/videos", []]])
+            ->all(), now()->addDay());
+    }
+
+    /**
+     * Best YouTube video: official Trailer → any Trailer → Teaser. Returns ['key', 'name', 'type'] or null.
+     * The key is the YouTube video id (youtube.com/watch?v=KEY).
+     */
+    private static function pickTrailer(?array $videos): ?array
+    {
+        $video = collect($videos['results'] ?? [])
+            ->filter(fn ($v) => ($v['site'] ?? '') === 'YouTube' && ! empty($v['key']))             // ← we can only embed YouTube
+            ->sortBy(fn ($v) => match (true) {
+                ($v['type'] ?? '') === 'Trailer' && ! empty($v['official']) => 0,
+                ($v['type'] ?? '') === 'Trailer' => 1,
+                ($v['type'] ?? '') === 'Teaser' => 2,
+                default => 9,
+            })
+            ->first(fn ($v) => in_array($v['type'] ?? '', ['Trailer', 'Teaser'], true));           // ← no clips / featurettes
+
+        return $video ? ['key' => $video['key'], 'name' => $video['name'] ?? 'Trailer', 'type' => $video['type']] : null;
+    }
+
     // ---------- Single film ----------
 
     public static function find(string $slug): ?array
@@ -172,7 +260,7 @@ class FilmCatalog
         }
 
         [, $type, $id] = $m;
-        $data = self::get("/{$type}/{$id}", ['append_to_response' => 'credits,recommendations,reviews'], now()->addDay());  // ← 1 request: details + cast + recommendations + reviews
+        $data = self::get("/{$type}/{$id}", ['append_to_response' => 'credits,recommendations,reviews,videos'], now()->addDay());  // ← 1 request: details + cast + recommendations + reviews + videos (NEW: trailer)
 
         return $data ? self::normalize($data, $type, detailed: true) : null;
     }
@@ -313,6 +401,7 @@ class FilmCatalog
             'poster' => ! empty($r['poster_path']) ? self::IMG.'w500'.$r['poster_path'] : null,     // ← full image URL on TMDB's image server
             'backdrop' => ! empty($r['backdrop_path']) ? self::IMG.'w1280'.$r['backdrop_path'] : null,
             'description' => $r['overview'] ?? '',
+            'release_date' => $r['release_date'] ?? $r['first_air_date'] ?? null,                   // ← NEW: "Releases Nov 21" on Coming soon trailers
             'years' => array_values(array_unique(array_filter([$start, $end]))),
             'score' => ($r['vote_count'] ?? 0) > 0 ? round($r['vote_average'], 1) : null,
             'seasons' => null,
@@ -329,6 +418,7 @@ class FilmCatalog
                 'cast' => array_column(array_slice($r['credits']['cast'] ?? [], 0, 8), 'name'),
                 'director' => collect($r['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name']
                     ?? ($r['created_by'][0]['name'] ?? null),
+                'trailer' => self::pickTrailer($r['videos'] ?? null),                               // ← NEW: "Watch trailer" button on the film page
             ];
             $film['seasons'] = $r['number_of_seasons'] ?? null;
             $film['status'] = $type === 'tv' ? ($r['status'] ?? null) : null;

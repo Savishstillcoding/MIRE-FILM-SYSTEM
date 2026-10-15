@@ -39,6 +39,15 @@
         @endif
         <p class="fs-5 fw-light" style="max-width: 50ch">{{ $film['description'] ?: 'No description yet.' }}</p>
 
+        @if (! empty($film['trailer']))                                                             {{-- ← NEW: only when TMDB has a YouTube trailer --}}
+            <a href="https://www.youtube.com/watch?v={{ $film['trailer']['key'] }}" target="_blank" rel="noopener"
+               class="btn btn-primary btn-lg d-inline-flex align-items-center gap-2"
+               data-trailer="{{ $film['trailer']['key'] }}" data-trailer-title="{{ $film['title'] }} — {{ $film['trailer']['name'] }}">  {{-- ← opens the pop-up player (app.js) --}}
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                Watch trailer
+            </a>
+        @endif
+
         @if ($film['seasons'] || $film['status'] || ! empty($film['director']) || ! empty($film['cast']))
             <dl class="row mt-4 mb-0" style="max-width: 36rem">
                 @if (! empty($film['director']))

@@ -7,7 +7,7 @@
 // Sections:  Brand tokens · Bootstrap overrides · Base (background, headings) · Navbar + logo (partials/header)
 //            Section headings (components/section-heading) · Posters (components/poster) · Sign-in warning
 //            (partials/signin-modal) · Lists (lists.blade.php) · Landing (welcome) · Cards · Film page (film-show)
-//            Reviews (partials/review-card) · Profile
+//            Reviews (partials/review-card) · Profile · Trailers · Admin (layouts/admin, views/admin/*)
 
 // ---------- Brand tokens ----------
 $mire-plum-900: #1f0030;
@@ -66,6 +66,8 @@ body {
 // Inputs default to --bs-body-bg (wine); keep them a neutral glass instead.
 .form-control, .form-select { background-color: rgba(255, 255, 255, .08); }
 .form-control:focus { background-color: rgba(255, 255, 255, .12); }
+// The open dropdown list can't be see-through, so browsers fall back to white (white text on white). Give options a solid dark colour.
+.form-select option { background-color: $mire-plum-900; color: #fff; }
 .modal-content .form-control { background-color: rgba(0, 0, 0, .25); }
 
 :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
@@ -230,6 +232,14 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
 
 .signin-dialog { position: relative; }
 
+// NEW: Create account password checklist (partials/join-modal): grey ○ → green ✓ when the rule is met.
+.password-rules {
+    li { display: flex; gap: .45rem; color: var(--mire-muted); transition: color .15s; }
+    li::before { content: '○'; width: 1rem; text-align: center; }
+    li.met { color: #6fdc9b; }
+    li.met::before { content: '✓'; font-weight: 700; }
+}
+
 .signin-warning {                                                                                   // ← the red cards beside the sign-in box
     display: flex;
     gap: .75rem;
@@ -299,6 +309,13 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
     padding: 1.25rem 1.25rem 1.5rem;
 
     .mire-heading { margin-bottom: 1rem; }
+}
+
+// ---------- Cards ----------
+.mire-card {                                                                                        // ← glass panel: settings, film page, review cards, profile, admin
+    background: var(--mire-surface);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $border-radius-lg;
 }
 
 // "See more / See less" sits under the box; the label follows the collapse's aria-expanded.
@@ -452,9 +469,238 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6,
     .value { font-family: $mire-display; font-size: clamp(2.25rem, 5vw, 3.25rem); line-height: 1; }
 }
 
+// ---------- Trailers (NEW: trailers.blade.php, partials/trailer-card, trailer-modal, home banner) ----------
+.trailer-rail {                                                                                     // ← row of 16:9 trailer cards (sideways scroll on phones)
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(15rem, 19rem);
+    gap: 1.25rem;
+    overflow-x: auto;
+    padding: .5rem .25rem 1rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .25) transparent;
+
+    > * { scroll-snap-align: start; }
+}
+
+.trailer-card {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    color: #fff;
+
+    .thumb {
+        position: relative;
+        display: block;
+        aspect-ratio: 16 / 9;                                                                       // ← trailers are landscape (posters are 2:3)
+        overflow: hidden;
+        margin-bottom: .45rem;
+        border-radius: $border-radius-lg;
+        background: #1c1226;
+        box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .45);
+    }
+    img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+    .play {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        display: grid;
+        place-items: center;
+        width: 3.25rem;
+        height: 3.25rem;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .6);
+        border: 2px solid rgba(255, 255, 255, .85);
+        transition: background .2s, transform .2s;
+        svg { margin-left: .15rem; }                                                                // ← the triangle looks centred
+    }
+    .title { font-weight: 700; line-height: 1.25; }
+    .meta { color: var(--mire-muted); font-size: .85rem; }
+
+    &:hover, &:focus-visible {
+        color: #fff;
+        img { transform: scale(1.04); }
+        .play { background: $primary; transform: translate(-50%, -50%) scale(1.08); }
+    }
+}
+
+.trailer-feature {                                                                                  // ← home "Featured trailer" banner
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    min-height: clamp(14rem, 32vw, 20rem);
+    padding: clamp(1.25rem, 3vw, 2.25rem);
+    border-radius: $border-radius-lg;
+    background-position: center;
+    background-size: cover;
+    box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, .45);
+}
+
+.trailer-dialog { background: #140a1f; }                                                            // ← pop-up player: near-black so the video stands out
+
+// ---------- Admin (layouts/admin + views/admin/*) ----------
+.admin-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+
+    @include media-breakpoint-up(lg) { flex-direction: row; }
+}
+
+.admin-sidebar {                                                                                    // ← left menu on laptops, top row on phones
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem 1rem;
+    padding: .75rem 1rem;
+    background: rgba($mire-ink, .82);
+    border-bottom: 1px solid var(--bs-border-color);
+
+    nav { display: flex; gap: .25rem; overflow-x: auto; }
+
+    @include media-breakpoint-up(lg) {
+        position: sticky;
+        top: 0;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        width: 15rem;
+        height: 100vh;
+        padding: 1.5rem 1rem;
+        border-bottom: 0;
+        border-right: 1px solid var(--bs-border-color);
+
+        nav { flex-direction: column; overflow: visible; }
+    }
+}
+
+.admin-brand {
+    color: #fff;
+    font-size: 1.35rem;
+    white-space: nowrap;
+
+    &:hover { color: #fff; }
+    .admin-tag { font-family: $mire-display; font-size: 1rem; letter-spacing: .15em; color: var(--mire-muted); }
+    @include media-breakpoint-up(lg) { padding: 0 .75rem 1.25rem; }
+}
+
+.admin-nav-link {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .55rem .75rem;
+    border-radius: $border-radius;
+    color: var(--mire-muted);
+    font-weight: 600;
+    white-space: nowrap;
+
+    &:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+    &.active { color: #fff; background: rgba($primary, .25); box-shadow: inset 3px 0 0 $primary; }
+    &.back { font-weight: 400; }
+}
+
+.admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.admin-topbar {                                                                                     // ← search + account menu
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .75rem clamp(1rem, 3vw, 2.5rem);
+    border-bottom: 1px solid var(--bs-border-color);
+    background: rgba($mire-ink, .5);
+
+    .mire-search { max-width: 28rem; }
+    .dropdown { margin-left: auto; }
+}
+
+.admin-content { flex: 1; padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2.5rem) 4rem; }
+
+.admin-stat {                                                                                       // ← dashboard number cards
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: 1.1rem 1.25rem;
+    background: var(--mire-surface-strong);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $border-radius-lg;
+    transition: border-color .2s;
+
+    &:has(.stretched-link):hover { border-color: rgba($primary, .7); }
+    .label { color: var(--mire-muted); font-weight: 600; font-size: .9rem; }
+    .value { font-family: $mire-display; font-size: clamp(2.25rem, 4vw, 3rem); line-height: 1; }
+    .today { font-size: .85rem; color: var(--mire-muted); }
+    .today.up { color: #6fdc9b; }
+}
+
+.admin-activity {                                                                                   // ← dashboard "Recent activity"
+    li {
+        display: flex;
+        align-items: center;
+        gap: .9rem;
+        padding: .8rem 0;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .icon {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .08);
+    }
+    .icon.star { color: $mire-gold; }
+    .icon.review { color: $link-color-dark; }
+    .icon.movie { color: #6fdc9b; }
+}
+
+.admin-table {                                                                                      // ← movies + users tables
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: rgba(255, 255, 255, .04);
+
+    thead th { color: var(--mire-muted); font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+    td, th { padding-top: .85rem; padding-bottom: .85rem; }
+    tbody tr:last-child td { border-bottom: 0; }
+}
+
+.admin-thumb { width: 2.75rem; padding: 0; box-shadow: none; .title { font-size: .5rem; } .subtitle { display: none; } }
+
+.admin-poster-drop {                                                                                // ← Add movie: 2:3 upload box
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 2 / 3;
+    width: 100%;
+    max-width: 16rem;
+    margin: 0 auto;
+    overflow: hidden;
+    border: 2px dashed rgba(255, 255, 255, .3);
+    border-radius: $border-radius-lg;
+    background: rgba(0, 0, 0, .2);
+    color: var(--mire-muted);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+
+    &:hover { border-color: rgba(255, 255, 255, .6); color: #fff; }
+    &.is-invalid { border-color: $danger; }
+    .empty { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 1rem; }
+    img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    &.has-image { border-style: solid; }
+    &.has-image .empty { visibility: hidden; }
+}
+
+// Keyboard users: show focus on the upload box when its hidden file input is focused.
+[data-poster]:has([data-poster-input]:focus-visible) .admin-poster-drop { outline: 3px solid #fff; outline-offset: 3px; }
+
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; scroll-behavior: auto !important; }
     .mire-poster { animation: none !important; }
+    .trailer-card img, .trailer-card .play { transition: none; }                                    // ← NEW: no zoom on hover
     .landing-backdrop img { animation: none; }                                                      // ← landing photos stop crossfading
     .landing-backdrop img:first-child { opacity: 1; }                                               // ← no crossfade: just show the first photo
 }

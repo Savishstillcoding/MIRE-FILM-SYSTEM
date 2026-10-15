@@ -17,6 +17,75 @@ php artisan serve --host=0.0.0.0 --port=8000    # keep running; Ctrl+C stops it
 - **This IP can change** when you switch Wi-Fi or reconnect. If the link stops working, run `ipconfig`, find **IPv4 Address** under "Wireless LAN adapter Wi-Fi", and use `http://<that IP>:8000`.
 - On the laptop itself: `http://127.0.0.1:8000` or `http://mire.test`.
 
+## 🛡️ Admin dashboard (added Oct 15, 2026)
+
+### How admins work
+- There is **one sign-up for everyone**. Every new account starts as a **regular user**.
+- An admin is a user whose **`is_admin`** flag (a yes/no column in the `users` table) is switched on.
+- Nobody can sign up *as* admin. Otherwise anyone could make themselves admin. `is_admin` is protected from forms (not "fillable" in `app/Models/User.php`).
+- **First admin:** made by the developer with a server command (`php artisan mire:admin`). Only someone with access to the server's terminal can run it.
+- **After that:** existing admins promote others in the browser: **Admin → Users → Make admin**.
+- Admins sign in with the same sign-in box. They get an **"Admin dashboard"** link in the account menu.
+- Regular users who open `/admin` get **403 Forbidden**, and guests are sent to sign in.
+
+```
+Anyone signs up ──► Regular user (is_admin = false)
+                          │  promoted by: php artisan mire:admin   (first admin)
+                          │           or: Admin → Users → Make admin (later)
+                          ▼
+                    Admin (is_admin = true) ──► can open /admin
+```
+
+### First-time setup (Laragon terminal; Laragon must be started)
+```bash
+cd C:\laragon\www\mire
+php artisan migrate                           # adds is_admin + movies/genres tables (once)
+php artisan storage:link                      # lets uploaded posters show (once; already done)
+php artisan mire:admin 2402063@lnu.edu.ph     # make your account an admin
+```
+Then open **http://mire.test/admin**.
+
+### Admin commands
+```bash
+php artisan mire:admin someone@email.com            # make admin      → "name is now an admin."
+php artisan mire:admin someone@email.com --remove   # remove admin    → "name is no longer an admin."
+php artisan list mire                               # show the app's own commands
+```
+- The person must **already have an account** (signed up). Otherwise: `No user with the email ...` (in red).
+- `mire:admin` = the command name, `someone@email.com` = **argument** (which account), `--remove` = **option** (a switch).
+- **Docker:** put `docker compose exec app` in front, e.g. `docker compose exec app php artisan migrate` and `docker compose exec app php artisan mire:admin someone@email.com`.
+- Code: `routes/console.php`.
+
+### Admin pages
+| Page | URL | What it does |
+|---|---|---|
+| Dashboard | `/admin` | Stat cards (Users, Reviews, Ratings, Movies added: total + today), recent activity, "+ Add movie" |
+| Movies | `/admin/movies` | All / Published / Drafts tabs, search, Edit, Delete (asks first) |
+| Add / Edit movie | `/admin/movies/create` | Poster (2:3, JPG/PNG/WebP, max 2 MB), Title, Year, Runtime, Genres, Age rating (MTRCB), Director, Description; Cancel / Save as draft / Publish |
+| Users | `/admin/users` | Search name/email, joined date, review + rating counts, Make admin / Remove admin (not yourself) |
+
+### Terms (for explaining it)
+| Term | Meaning in this app |
+|---|---|
+| Authentication | *Who are you?* The sign-in box checks username + password |
+| Authorization | *What may you do?* The `admin` Gate (`app/Providers/AppServiceProvider.php`) checks `is_admin` |
+| Role-based access control (RBAC) | Permissions depend on the role: user vs admin |
+| Bootstrapping the first admin | Someone has to be the first admin: the `mire:admin` command |
+| Mass-assignment protection | `is_admin` isn't fillable, so a tampered sign-up form can't set it |
+
+### Files
+- Routes: `routes/web.php` (admin group, `can:admin`), `routes/console.php` (`mire:admin`)
+- Controllers: `app/Http/Controllers/Admin/` (Dashboard, Movie, User)
+- Models: `app/Models/Movie.php`, `Genre.php`, `User.php` (`is_admin`)
+- Views: `resources/views/layouts/admin.blade.php`, `resources/views/admin/`
+- Migrations: `database/migrations/2026_10_15_*`
+- Tests: `tests/Feature/AdminTest.php` (run all with `php artisan test`)
+
+### Not done yet
+- Published movies don't show on the public Films/Lists pages yet (TMDB only).
+- Settings: Save changes + Delete/Deactivate account are still placeholders.
+- Uploaded posters may not show in Docker (the `public/storage` link is a Windows junction).
+
 ## 1. Goal and the main idea
 
 Goal: run the already-Dockerized Laravel app with Laragon too.
