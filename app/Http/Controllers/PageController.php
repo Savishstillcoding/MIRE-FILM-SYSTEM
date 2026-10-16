@@ -64,6 +64,7 @@ class PageController extends Controller
         return view('films', [
             'q' => $q,
             'results' => $q === '' ? null : FilmCatalog::search($q),                                // ← null = no search, so the results section is hidden
+            'local' => FilmCatalog::localLatest(),                                                  // ← NEW: "New on Miré Film" row (published admin movies)
             'trending' => FilmCatalog::trending(12),                                                // ← "Trending this week" row
             ...$this->weeklyReviews($request),                                                      // ← adds 'reviews' + 'reviewsFromTmdb' for the reviews section
         ]);

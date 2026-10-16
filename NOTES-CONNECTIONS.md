@@ -358,6 +358,32 @@ For example, the Trailers page fetches 3 lists **at the same time**, then about 
 ->sortBy(...)    // official Trailer → any Trailer → Teaser
 ```
 
+### Admin movies mixed in (database, not TMDB)
+`FilmCatalog` also returns **published** movies from the `movies` table, so the public pages show them with no extra code in the views. They're **never sent to TMDB** (no `tmdb_id`).
+
+| Where | Function | What happens |
+|---|---|---|
+| Film page `/films/local-5` | `find()` → `findLocal()` | `Movie::published()->find(5)` + "similar" = movies sharing a genre. No title in the link, so **renaming a movie keeps its likes, ratings and reviews** |
+| Draft or deleted movie | `findOrPlaceholder()` | **404**, so there's no page and no likes or ratings on it |
+| Search box | `search()` | matching published titles come **first**, then TMDB results |
+| Films page | `localLatest()` | "New on Miré Film" row (hidden when empty) |
+| Lists page | `withLocalGenres()` | added to the front of the matching TMDB box (Sci-fi → Science Fiction); BL / Filipino Teleserye get their own box |
+
+`app/Models/Movie.php` turns a row into the same "film" array as TMDB films:
+```php
+public function slug(): string { return "local-{$this->id}"; }        // no title: likes/reviews match this exact text
+
+public function posterUrl(): ?string
+{
+    return $this->poster ? '/storage/'.$this->poster : null;          // no http://host: works on mire.test, 192.168.x.x:8000, …
+}
+
+public function toCatalogFilm(bool $detailed = false): array { /* slug, title, poster, years, description … genres, runtime, director, age_rating */ }
+```
+Deleting a movie in admin also deletes members' likes, watchlist, ratings and reviews of it (`MovieController::destroy()`: `film_slug = 'local-5'`).
+
+The poster saved with a like or review is `/storage/posters/…` with no host, so it still shows on a phone or after the Wi-Fi IP changes.
+
 ### When TMDB isn't available
 - No `TMDB_TOKEN`, or the internet is down → `fallback()` returns 5 built-in films (Arcane, Pearl, …), so pages still work.
 - The Trailers page shows "No trailers right now".
@@ -408,7 +434,7 @@ cache   (TMDB answers, key → value + expiry)     jobs (queue, unused for now)
 ```
 - `─<` = "one to many". `>─<` = "many to many" through `genre_movie`.
 - **Delete a user** → their likes, watchlist, ratings, reviews and review likes are deleted too (`cascadeOnDelete`). Movies they added stay, with `created_by` set to empty (`nullOnDelete`).
-- **`film_slug`** (e.g. `movie-603-the-matrix`) links a row to a TMDB film. There's no TMDB table: films live in TMDB, and we only keep a **snapshot** (title + poster) so the profile page doesn't need TMDB.
+- **`film_slug`** (e.g. `movie-603-the-matrix`, or `local-5` for an admin movie) links a row to a film. There's no TMDB table: films live in TMDB, and we only keep a **snapshot** (title + poster) so the profile page doesn't need TMDB.
 
 | Table | Model | Created by migration | Written by |
 |---|---|---|---|
@@ -467,7 +493,7 @@ browser ◄── http://mire.test/storage/posters/abc123.jpg     (URL from Movi
 ```php
 public function posterUrl(): ?string
 {
-    return $this->poster ? Storage::disk('public')->url($this->poster) : null;
+    return $this->poster ? '/storage/'.$this->poster : null;          // no host: the browser adds the address it's on, so phones work too
 }
 ```
 - The database only stores the **path** (`posters/abc123.jpg`), not the image.
@@ -495,7 +521,7 @@ php artisan migrate                                  # create/update the tables 
 ## 10. Not connected yet (honest list)
 
 - `TMDB_API_KEY` and `YOUTUBE_API_KEY` are in `.env` but **no code uses them**. Only `TMDB_TOKEN` is used.
-- **Admin movies** (`movies` table) don't appear on the public Films/Lists/Trailers pages yet. They're only in `/admin`.
+- **Admin movies** show on the film page, search, Films ("New on Miré Film") and Lists, but **not on Home or Trailers** (they have no trailer or backdrop).
 - `PUT /settings` and `DELETE /account` are **placeholders** (they just redirect).
 - The `jobs` table (queue) exists but nothing uses background jobs yet.
 - Uploaded posters may not show in **Docker**, because `public/storage` is a Windows junction the Linux container can't follow.

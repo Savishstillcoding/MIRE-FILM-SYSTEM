@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Genre;
+use App\Models\Like;
 use App\Models\Movie;
+use App\Models\Rating;
+use App\Models\Review;
+use App\Models\WatchlistItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -79,6 +83,9 @@ class MovieController extends Controller
     public function destroy(Movie $movie)
     {
         $this->deletePoster($movie);
+        foreach ([Like::class, WatchlistItem::class, Rating::class, Review::class] as $model) {      // ← NEW: members' likes / watchlist / ratings / reviews of it
+            $model::where('film_slug', $movie->slug())->delete();                                   //   exact "local-5" (never touches "local-50")
+        }
         $movie->delete();                                                                           // ← genre_movie rows go too (cascade)
 
         return redirect()->route('admin.movies.index')->with('status', "“{$movie->title}” deleted");

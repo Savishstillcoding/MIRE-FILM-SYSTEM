@@ -21,6 +21,9 @@
         <p class="d-flex flex-wrap align-items-center gap-2 gap-md-3 text-mire-muted fs-5 mb-3">
             @if ($film['years'])<span>{{ implode(' – ', $film['years']) }}</span>@endif
             @if (! empty($film['runtime']))<span>· {{ intdiv($film['runtime'], 60) ? intdiv($film['runtime'], 60).'h ' : '' }}{{ $film['runtime'] % 60 }}m</span>@endif
+            @if (! empty($film['age_rating']))
+                <span class="badge rounded-pill border border-light-subtle fw-semibold fs-6" title="MTRCB rating">{{ $film['age_rating'] }}</span>  {{-- ← NEW: admin movies (G, PG, R-13…) --}}
+            @endif
             @if (! empty($film['score']))
                 <span class="badge rounded-pill text-bg-warning fs-6" title="TMDB user score">★ {{ number_format($film['score'], 1) }}</span>  {{-- ← TMDB score out of 10 --}}
             @endif

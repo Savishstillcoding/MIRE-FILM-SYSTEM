@@ -15,6 +15,7 @@
  *   data-poster          admin/movies/form       poster preview + Replace / Remove before saving
  *   data-trailer         trailers, film-show, home   NEW: play a YouTube trailer in the pop-up (partials/trailer-modal)
  *   data-password-rules  partials/join-modal     NEW: password checklist turns green as you type
+ *   data-password-toggle partials/join-modal     NEW: 👁 button shows / hides the password
  */
 import * as bootstrap from 'bootstrap';
 
@@ -122,6 +123,22 @@ document.querySelectorAll('[data-password-rules]').forEach(list => {
     );
     input.addEventListener('input', check);
     check();
+});
+
+// NEW: 👁 Show / hide password. Switches the box between type="password" (dots) and type="text" (readable).
+document.querySelectorAll('[data-password-toggle]').forEach(btn => {
+    const input = document.getElementById(btn.dataset.passwordToggle);
+    const set = shown => {
+        input.type = shown ? 'text' : 'password';
+        btn.setAttribute('aria-pressed', String(shown));                                            // ← app.scss swaps the eye icon
+        btn.setAttribute('aria-label', shown ? 'Hide password' : 'Show password');
+    };
+    btn.addEventListener('click', () => {
+        set(input.type === 'password');
+        input.focus();                                                                              // ← keep typing where you were
+    });
+    btn.closest('form')?.addEventListener('submit', () => set(false));                              // ← never send / autofill-save it as visible text
+    btn.closest('.modal')?.addEventListener('hidden.bs.modal', () => set(false));                   // ← closing the pop-up hides it again
 });
 
 // Settings: pencil button unlocks the username field.

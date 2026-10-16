@@ -65,6 +65,9 @@
                             </td>
                             <td class="d-none d-lg-table-cell text-mire-muted small">{{ $movie->updated_at->diffForHumans() }}</td>
                             <td class="text-end pe-4 text-nowrap">
+                                @if ($movie->status === 'published')                                {{-- ← NEW: open its public film page --}}
+                                    <a href="{{ route('films.show', $movie->slug()) }}" class="btn btn-sm btn-outline-light" target="_blank" rel="noopener" aria-label="View {{ $movie->title }} on the site">View</a>
+                                @endif
                                 <a href="{{ route('admin.movies.edit', $movie) }}" class="btn btn-sm btn-outline-light" aria-label="Edit {{ $movie->title }}">Edit</a>
                                 <form method="POST" action="{{ route('admin.movies.destroy', $movie) }}" class="d-inline"
                                       data-confirm="Delete “{{ $movie->title }}”? This can’t be undone.">

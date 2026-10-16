@@ -24,8 +24,14 @@
                     </div>
                     <div class="mb-1">
                         <label for="password" class="form-label">Password</label>
-                        <input id="password" name="password" type="password" @class(['form-control form-control-lg', 'is-invalid' => $errors->register->has('password')]) autocomplete="new-password" required aria-describedby="password-rules">  {{-- ← rules: AppServiceProvider Password::defaults() --}}
-                        @error('password', 'register') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="password-field">                                                {{-- ← NEW: 👁 button sits INSIDE the box, on the right (like the search bar) --}}
+                            <input id="password" name="password" type="password" @class(['form-control form-control-lg', 'is-invalid' => $errors->register->has('password')]) autocomplete="new-password" required aria-describedby="password-rules">  {{-- ← rules: AppServiceProvider Password::defaults() --}}
+                            <button type="button" class="btn password-toggle" data-password-toggle="password" aria-label="Show password" aria-pressed="false">  {{-- ← NEW: show / hide (app.js "data-password-toggle") --}}
+                                <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="eye-closed" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+                            </button>
+                        </div>
+                        @error('password', 'register') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         {{-- NEW: live checklist; each rule turns green as you type (app.js "data-password-rules"). The server checks the same rules. --}}
                         <ul class="password-rules list-unstyled small mt-2 mb-0" id="password-rules" data-password-rules="password">
                             <li data-rule="length">At least 8 characters</li>

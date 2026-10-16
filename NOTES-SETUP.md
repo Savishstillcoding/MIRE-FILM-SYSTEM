@@ -17,6 +17,119 @@ php artisan serve --host=0.0.0.0 --port=8000    # keep running; Ctrl+C stops it
 - **This IP can change** when you switch Wi-Fi or reconnect. If the link stops working, run `ipconfig`, find **IPv4 Address** under "Wireless LAN adapter Wi-Fi", and use `http://<that IP>:8000`.
 - On the laptop itself: `http://127.0.0.1:8000` or `http://mire.test`.
 
+## ✅ After setup: which terminal for what (added Oct 15, 2026)
+
+Setup is done. This is the everyday guide: **where to run each command, and what to do when a terminal says it can't find it.**
+
+### 1. Is everything still set up? (quick check, any terminal)
+```powershell
+php -v                 # PHP 8.4.26             ← if 8.2.12: old terminal or PATH changed (see 4)
+composer -V            # Composer version 2.x
+docker -v              # Docker version 29.x
+git --version          # git version 2.x
+```
+In the **Laragon terminal**, also:
+```bash
+node -v                # v22.x
+npm -v                 # 10.x
+mysql -u root -e "SHOW DATABASES"   # list includes: mire   (Laragon must be started)
+```
+And in the browser: **http://mire.test** shows Miré Film (Laragon started).
+
+### 2. Which terminal can run what
+
+| Command | Laragon terminal (`λ`) | VS Code terminal (`PS`) | Git Bash (`$`) |
+|---|---|---|---|
+| `php artisan …` (migrate, serve, test, mire:admin…) | ✅ | ✅ | ✅ |
+| `composer install` | ✅ | ✅ | ✅ |
+| `docker compose …` | ✅ | ✅ | ✅ |
+| `git …` | ✅ | ✅ | ✅ |
+| `npm run dev` / `npm run build` / `npm install` | ✅ | ❌ **not found** | ❌ **not found** |
+| `node …` | ✅ | ❌ **not found** | ❌ **not found** |
+| `mysql -u root …` | ✅ | ❌ **not found** | ❌ **not found** |
+
+**Why:** Laragon's terminal adds Laragon's own tools (Node, MySQL) to its PATH. VS Code and Git Bash only see the **Windows PATH**, which has Laragon's PHP (we added it) but **not** Node or MySQL.
+
+**Simple rule:**
+- **Laragon terminal** works for **everything**. Use it when unsure.
+- **VS Code terminal** works for everything **except `npm`, `node`, `mysql`**.
+
+**Always `cd` into the project first** (Laragon's terminal starts in `C:\laragon\www`):
+```bash
+cd C:\laragon\www\mire                                       # Laragon / VS Code (PowerShell)
+cd /c/Users/Acer/Desktop/MIRE-FILM-SYSTEM/MIRE-FILM-SYSTEM   # Git Bash (forward slashes)
+```
+
+### 3. A command "can't be found" in the VS Code terminal
+
+**Error looks like:** `npm : The term 'npm' is not recognized…` (or `node`, or `mysql`)
+
+**Fix A (easiest): run it in the Laragon terminal instead.** Laragon window → **Terminal** → `cd C:\laragon\www\mire` → run the command.
+
+**Fix B (stay in VS Code): use the full path.** Same result, just longer:
+```powershell
+& "C:\laragon\bin\nodejs\node-v22\npm.cmd" run dev
+& "C:\laragon\bin\nodejs\node-v22\npm.cmd" run build
+& (Get-ChildItem C:\laragon\bin\mysql\*\bin\mysql.exe)[0].FullName -u root mire -e "SELECT id, name, email FROM users"
+```
+`&` means "run this program" in PowerShell. It's needed when the path is in quotes.
+
+**Fix C (permanent): add Node to the Windows PATH**, the same way we added PHP:
+1. Start → type **environment variables** → **Edit environment variables for your account**.
+2. Select **Path** → **Edit** → **New** → paste `C:\laragon\bin\nodejs\node-v22` → **OK** → **OK**.
+3. (Optional, for `mysql`) **New** again → `C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin`
+4. **Close ALL of VS Code** and reopen it. Terminals only read PATH when they start.
+5. Check in a new VS Code terminal: `npm -v`
+
+**Other VS Code terminal errors**
+
+| Error | Cause | Fix |
+|---|---|---|
+| `php -v` says **8.2.12** | That terminal was opened before the PATH change, or XAMPP got put back in PATH | Close all of VS Code and reopen. Still 8.2? Check PATH (step 1 above): `C:\laragon\bin\php\php-8.4.26-Win32-vs17-x64` must be there and **`C:\xampp\php` must not** |
+| `Composer detected issues in your platform … >= 8.4.1` | Same as above: PHP 8.2 is running | Same fix |
+| `Could not open input file: artisan` | Not in the project folder | `cd C:\laragon\www\mire` |
+| `Could not find composer.json` / `Could not read package.json` | Not in the project folder | `cd C:\laragon\www\mire` |
+| `failed to connect to the docker API` | Docker Desktop is closed | Open Docker Desktop, wait for "Engine running" |
+| `SQLSTATE[HY000] [2002] … actively refused` | Laragon's MySQL isn't running | Laragon → **Start All** |
+| `… cannot be loaded because running scripts is disabled` | PowerShell blocks `npm.ps1` | Use `npm.cmd` instead of `npm` (Fix B), or the Laragon terminal |
+
+### 4. Something doesn't work in the Laragon terminal
+
+| Error / problem | Cause | Fix |
+|---|---|---|
+| `Could not find composer.json` / `Could not read package.json` / `Could not open input file: artisan` | It starts in `C:\laragon\www`, not the project | `cd mire` (or `cd C:\laragon\www\mire`) |
+| `cd mire` → `The system cannot find the path specified` | You're not in `C:\laragon\www`, or the junction is missing | `cd C:\laragon\www\mire`. Still missing? Recreate: `mklink /J C:\laragon\www\mire C:\Users\Acer\Desktop\MIRE-FILM-SYSTEM\MIRE-FILM-SYSTEM` |
+| `php -v` shows the wrong version | Laragon is set to another PHP | Laragon → right-click → **PHP → Version → php-8.4.26…**, then close and reopen the terminal |
+| `mysql` / `migrate` → `Can't connect to MySQL server` | MySQL not started | Laragon → **Start All** |
+| `npm run dev` runs but the site looks unstyled | Vite isn't running, or `public/hot` is stale | Keep `npm run dev` open while coding. For phones / no dev server: `Ctrl+C`, then `npm run build` |
+| Path with `\` fails with `bash:` in the error | You're actually in **Git Bash**, not Laragon | Use `/c/Users/...` forward slashes, or open the Laragon terminal |
+
+### 5. When BOTH terminals fail (any shell)
+
+| Problem | Fix |
+|---|---|
+| `php artisan` shows a red error about `.env` / `APP_KEY` | `php artisan key:generate` (only if `APP_KEY=` is empty in `.env`) |
+| Weird or old settings after editing `.env` | `php artisan optimize:clear` |
+| "Table … doesn't exist" | `php artisan migrate` |
+| New code but the site shows old CSS/JS | `npm run build` (Laragon terminal), then **Ctrl+F5** in the browser |
+| `mire.test` shows the Laragon page | Apache didn't reload: Task Manager → end all `httpd.exe` → Laragon **Start All** |
+| Uploaded posters don't show | `php artisan storage:link` (once) |
+
+### 6. Everyday flow (copy this)
+```bash
+# 1. Laragon window → Start All
+# 2. Laragon terminal:
+cd C:\laragon\www\mire
+npm run dev                  # leave this running (live CSS/JS)
+
+# 3. VS Code terminal (second terminal) for everything else:
+php artisan migrate          # after pulling new code with migrations
+php artisan test             # check nothing broke
+git status                   # see what you changed
+
+# 4. Open http://mire.test
+```
+
 ## 🛡️ Admin dashboard (added Oct 15, 2026)
 
 ### How admins work
@@ -82,7 +195,7 @@ php artisan list mire                               # show the app's own command
 - Tests: `tests/Feature/AdminTest.php` (run all with `php artisan test`)
 
 ### Not done yet
-- Published movies don't show on the public Films/Lists pages yet (TMDB only).
+- ~~Published movies don't show on the public pages~~ ✅ Done (Oct 15): film page, search, Films ("New on Miré Film") and Lists. Not on Home or Trailers (no trailer). Drafts → 404.
 - Settings: Save changes + Delete/Deactivate account are still placeholders.
 - Uploaded posters may not show in Docker (the `public/storage` link is a Windows junction).
 

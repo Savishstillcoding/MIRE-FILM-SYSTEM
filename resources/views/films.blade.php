@@ -1,5 +1,5 @@
 {{--
-    Films page (route /films, PageController::films). Search results (?q=), trending row,
+    Films page (route /films, PageController::films). Search results (?q=), "New on Miré Film" (NEW: admin movies), trending row,
     "Just reviewed" (still sample titles) and "Popular reviews this week" (partials/review-card).
 --}}
 @extends('layouts.app')
@@ -33,6 +33,17 @@
         @endif
     </section>
 @endisset
+
+@if ($local)                                                                                        {{-- ← NEW: published admin movies (FilmCatalog::localLatest), hidden when there are none --}}
+    <section class="mb-5">
+        <x-section-heading variant="caps">New on Miré Film</x-section-heading>
+        <div class="poster-rail">
+            @foreach ($local as $film)
+                <x-poster :film="$film" />
+            @endforeach
+        </div>
+    </section>
+@endif
 
 <section>
     <x-section-heading variant="caps">Trending this week</x-section-heading>

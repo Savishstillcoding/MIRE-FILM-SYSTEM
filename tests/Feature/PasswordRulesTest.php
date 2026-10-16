@@ -44,6 +44,7 @@ class PasswordRulesTest extends TestCase
     public function test_the_sign_up_box_lists_the_rules(): void
     {
         $this->get('/')->assertSee('data-password-rules', false)
+            ->assertSee('data-password-toggle="password"', false)->assertSee('aria-label="Show password"', false)  // ← NEW: 👁 show / hide button
             ->assertSeeInOrder(['At least 8 characters', 'An uppercase and a lowercase letter', 'A number', 'A symbol']);
     }
 

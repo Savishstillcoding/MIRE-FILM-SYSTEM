@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Genre;
+use App\Models\Movie;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Pool;
@@ -13,6 +15,7 @@ use Illuminate\Support\Str;
 
 /**
  * The ONLY place that talks to TMDB (themoviedb.org): films, posters, genres, search, TMDB reviews and trailers.
+ * NEW: also mixes in published admin movies (movies table, slugs "local-{id}"): film page, search, Films row, Lists.
  * Results are cached so pages stay fast; several requests are fetched at once (getMany / Http::pool).
  * Without a token, or while TMDB is unreachable, the small built-in catalog at the bottom is used instead.
  *
@@ -73,13 +76,21 @@ class FilmCatalog
 
     public static function search(string $q): array
     {
+        $local = Movie::published()->where('title', 'like', '%'.$q.'%')->latest()->take(12)->get()  // ← NEW: admin movies first
+            ->map->toCatalogFilm()->all();
         $data = self::get('/search/multi', ['query' => $q, 'include_adult' => 'false'], now()->addHour());  // ← searches movies AND TV shows
 
         if ($data === null) {
-            return collect(self::fallback())->filter(fn ($f) => stripos($f['title'], $q) !== false)->values()->all();
+            return array_merge($local, collect(self::fallback())->filter(fn ($f) => stripos($f['title'], $q) !== false)->values()->all());
         }
 
-        return self::results($data, 30);
+        return array_merge($local, self::results($data, 30));
+    }
+
+    /** NEW: newest published admin movies, for the Films page "New on Miré Film" row. */
+    public static function localLatest(int $limit = 12): array
+    {
+        return Movie::published()->latest()->latest('id')->take($limit)->get()->map->toCatalogFilm()->all();
     }
 
     /**
@@ -129,14 +140,14 @@ class FilmCatalog
     {
         $genres = self::get('/genre/movie/list', ttl: now()->addWeek())['genres'] ?? null;          // ← the 19 genre names (cached a week)
         if (! $genres) {
-            return [['name' => 'Featured', 'slug' => 'featured', 'films' => self::fallback()]];
+            return self::withLocalGenres([['name' => 'Featured', 'slug' => 'featured', 'films' => self::fallback()]]);
         }
 
         $data = self::getMany(collect($genres)->mapWithKeys(fn ($g) => [$g['id'] => ['/discover/movie', [  // ← popular films per genre, all genres at once
             'with_genres' => $g['id'], 'sort_by' => 'popularity.desc', 'vote_count.gte' => 200, 'include_adult' => 'false',
         ]]])->all());
 
-        return collect($genres)
+        return self::withLocalGenres(collect($genres)
             ->map(fn ($g) => [
                 'name' => $g['name'],
                 'slug' => Str::slug($g['name']),
@@ -144,7 +155,36 @@ class FilmCatalog
                     ->map(fn ($r) => self::normalize($r, 'movie'))->all(),
             ])
             ->filter(fn ($shelf) => $shelf['films'])                                                // ← skip genres with no films
-            ->values()->all();
+            ->values()->all());
+    }
+
+    /** Our genre names that TMDB spells differently. */
+    private const GENRE_ALIASES = ['sci-fi' => 'science fiction'];
+
+    /**
+     * NEW: put published admin movies on the Lists page. A movie goes to the FRONT of the TMDB box with the same
+     * genre name (Action, Comedy, Sci-fi → Science Fiction…); genres TMDB doesn't have (BL, Filipino Teleserye)
+     * get their own box at the end. Genres with no published movies add nothing.
+     */
+    private static function withLocalGenres(array $shelves): array
+    {
+        $genres = Genre::whereHas('movies', fn ($q) => $q->published())                            // ← only genres that have a published movie
+            ->with(['movies' => fn ($q) => $q->published()->latest()->with('genres')])->orderBy('name')->get();
+
+        foreach ($genres as $genre) {
+            $name = Str::lower($genre->name);
+            $name = self::GENRE_ALIASES[$name] ?? $name;
+            $films = $genre->movies->map->toCatalogFilm()->all();
+            $i = collect($shelves)->search(fn ($s) => Str::lower($s['name']) === $name);
+
+            if ($i !== false) {
+                $shelves[$i]['films'] = array_merge($films, $shelves[$i]['films']);                // ← front of the matching TMDB box
+            } else {
+                $shelves[] = ['name' => $genre->name, 'slug' => Str::slug($genre->name), 'films' => $films];  // ← new box (e.g. BL)
+            }
+        }
+
+        return $shelves;
     }
 
     /**
@@ -255,6 +295,10 @@ class FilmCatalog
 
     public static function find(string $slug): ?array
     {
+        if (preg_match('/^local-(\d+)$/', $slug, $m)) {                                             // ← NEW: admin movie, e.g. local-5 (movies table id 5)
+            return self::findLocal((int) $m[1]);
+        }
+
         if (! preg_match('/^(movie|tv)-(\d+)/', $slug, $m)) {                                       // ← e.g. movie-603-the-matrix → type + TMDB id
             return self::fallbackFind($slug);
         }
@@ -265,10 +309,31 @@ class FilmCatalog
         return $data ? self::normalize($data, $type, detailed: true) : null;
     }
 
-    /** Any slug still gets a page, even if TMDB doesn't know it. */
+    /** NEW: a published admin movie with its details; drafts / deleted movies → null. "Similar" = other movies sharing a genre. */
+    private static function findLocal(int $id): ?array
+    {
+        $movie = Movie::published()->with('genres')->find($id);
+        if (! $movie) {
+            return null;
+        }
+
+        $similar = Movie::published()->whereKeyNot($id)
+            ->whereHas('genres', fn ($q) => $q->whereIn('genres.id', $movie->genres->modelKeys()))
+            ->latest()->take(8)->get()->map->toCatalogFilm()->all();
+
+        return ['similar' => $similar] + $movie->toCatalogFilm(detailed: true);
+    }
+
+    /**
+     * Any TMDB-style slug still gets a page, even if TMDB doesn't know it.
+     * NEW: an admin movie that's a draft or deleted → 404 (no page, no likes/ratings on it).
+     */
     public static function findOrPlaceholder(string $slug): array
     {
-        return self::find($slug) ?? self::placeholder($slug);
+        $film = self::find($slug);
+        abort_if(! $film && str_starts_with($slug, 'local-'), 404);
+
+        return $film ?? self::placeholder($slug);
     }
 
     // ---------- TMDB plumbing (requests, caching, outage handling) ----------

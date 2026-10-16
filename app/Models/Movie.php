@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * A movie added by an admin (not from TMDB). Table: movies (+ genre_movie for its genres).
  * Saved by app/Http/Controllers/Admin/MovieController.php; listed on resources/views/admin/movies/index.blade.php.
+ * Published ones also show on the public site through FilmCatalog (film page, search, Films, Lists).
  */
 #[Fillable(['title', 'year', 'runtime', 'age_rating', 'director', 'description', 'poster', 'status'])]
 class Movie extends Model
@@ -40,15 +40,66 @@ class Movie extends Model
         $query->where('status', 'published');
     }
 
-    /** Public URL of the uploaded poster, or null (needs `php artisan storage:link` once). */
+    /**
+     * Public URL of the uploaded poster, or null (needs `php artisan storage:link` once).
+     * Starts with "/" (no http://host): the browser adds whatever address it's on (mire.test, 192.168.x.x:8000…),
+     * so posters saved with likes/reviews keep working on phones and after the Wi-Fi IP changes.
+     */
     public function posterUrl(): ?string
     {
-        return $this->poster ? Storage::disk('public')->url($this->poster) : null;
+        return $this->poster ? '/storage/'.$this->poster : null;
+    }
+
+    /**
+     * NEW: the film-page address part, e.g. "local-5". No title in it on purpose: likes, ratings and reviews are
+     * matched by this exact text, so renaming a movie must not change it.
+     */
+    public function slug(): string
+    {
+        return "local-{$this->id}";
     }
 
     /** The array shape the <x-poster> component expects. */
     public function toFilm(): array
     {
-        return ['slug' => "local-{$this->id}", 'title' => $this->title, 'poster' => $this->posterUrl()];
+        return ['slug' => $this->slug(), 'title' => $this->title, 'poster' => $this->posterUrl()];
+    }
+
+    /**
+     * NEW: the same "film" array FilmCatalog::normalize() builds for TMDB films, so every public page
+     * (film page, search, Films, Lists) can show admin movies. No tmdb_id → no TMDB calls for it.
+     */
+    public function toCatalogFilm(bool $detailed = false): array
+    {
+        $film = [
+            'slug' => $this->slug(),
+            'type' => 'local',
+            'title' => $this->title,
+            'subtitle' => (string) $this->year,
+            'poster' => $this->posterUrl(),
+            'backdrop' => null,
+            'description' => $this->description,
+            'release_date' => null,
+            'years' => [$this->year],
+            'score' => null,
+            'seasons' => null,
+            'status' => null,
+            'similar' => [],
+            'reviews' => [],
+        ];
+
+        if ($detailed) {                                                                            // ← film page extras
+            $film += [
+                'genres' => $this->genres->pluck('name')->all(),
+                'runtime' => $this->runtime,
+                'director' => $this->director,
+                'age_rating' => $this->age_rating,
+                'cast' => [],
+                'tagline' => null,
+                'trailer' => null,
+            ];
+        }
+
+        return $film;
     }
 }

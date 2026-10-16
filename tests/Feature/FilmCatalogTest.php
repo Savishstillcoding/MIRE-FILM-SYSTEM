@@ -69,6 +69,7 @@ class FilmCatalogTest extends TestCase
             'api.themoviedb.org/3/trending/*' => Http::response($films('Trend', 100)),
             'api.themoviedb.org/3/discover/movie*vote_average.desc*' => Http::response($films('Top', 200)),
             'api.themoviedb.org/3/discover/movie*' => Http::response($films('Classic', 300)),
+            '*' => Http::response(['results' => []]),                     // ← NEW: e.g. trailer /videos lookups: never hit the real internet
         ]);
         $user = User::factory()->create();
 
